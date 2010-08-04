@@ -17,7 +17,7 @@ class HTBDAgent(Agent.Artist):
   
   def search(self, results, media, lang):
     if media.primary_metadata is not None:
-      query = String.URLEncode(self.stripAccents(media.primary_metadata.title))
+      query = String.URLEncode(String.StripDiacritics(media.primary_metadata.title))
       Log(query)
       #try:
       previousName = ''
@@ -33,8 +33,8 @@ class HTBDAgent(Agent.Artist):
   def update(self, metadata, media, lang):
     for s in [HTBD_SEARCH_MUSIC_ART, HTBD_SEARCH_MUSIC_THUMBS]:
       i = 0
-      for img in HTML.ElementFromURL(s % String.URLEncode(self.stripAccents(metadata.id))).xpath('//img[contains(@src,"./data/thumbnails")]'):
-        if self.stripAccents(img.get('alt')).lower() == self.stripAccents(metadata.id).lower():
+      for img in HTML.ElementFromURL(s % String.URLEncode(String.StripDiacritics(metadata.id))).xpath('//img[contains(@src,"./data/thumbnails")]'):
+        if String.StripDiacritics(img.get('alt')).lower() == String.StripDiacritics(metadata.id).lower():
           i += 1
           thumbUrl = img.get('src').replace('./',HTBD_BASEURL)
           thumb = HTTP.Request(thumbUrl)
@@ -43,8 +43,3 @@ class HTBDAgent(Agent.Artist):
             metadata.art[largeImgUrl] = Proxy.Preview(thumb, sort_order = i)
           else:
             metadata.posters[largeImgUrl] = Proxy.Preview(thumb, sort_order = i)
-
-  def stripAccents(self, str):
-    nkfd_form = unicodedata.normalize('NFKD', unicode(str))
-    only_ascii = nkfd_form.encode('ASCII', 'ignore')
-    return only_ascii
