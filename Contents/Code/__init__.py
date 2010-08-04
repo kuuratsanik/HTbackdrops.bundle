@@ -30,7 +30,7 @@ class HTBDAgent(Agent.Artist):
       #except:
     results.Sort('score', descending=True)
     
-  def update(self, metadata, lang):
+  def update(self, metadata, media, lang):
     for s in [HTBD_SEARCH_MUSIC_ART, HTBD_SEARCH_MUSIC_THUMBS]:
       i = 0
       for img in HTML.ElementFromURL(s % String.URLEncode(self.stripAccents(metadata.id))).xpath('//img[contains(@src,"./data/thumbnails")]'):
