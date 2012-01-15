@@ -1,15 +1,18 @@
-SEARCH_ARTIST  = 'http://htbackdrops.com/api/TESTKEY/searchXML?keywords=%s&default_operator=and&limit=50&aid=1,5'
-MUSIC_ART      = 'http://htbackdrops.com/api/TESTKEY/searchXML?keywords=%s&default_operator=and&limit=50&aid=1'
-MUSIC_THUMBS   = 'http://htbackdrops.com/api/TESTKEY/searchXML?keywords=%s&default_operator=and&limit=50&aid=5'
-THUMB_URL      = 'http://htbackdrops.com/api/TESTKEY/download/%s/thumbnail' # (max. width and height of 125px)
-FULL_IMAGE_URL = 'http://htbackdrops.com/api/TESTKEY/download/%s/fullsize'  # (original full-size image)
+API_URL = 'http://htbackdrops.com/api'
+API_KEY = '15f8fe4ad7760d77c85e686eefafd26f'
+SEARCH_ARTIST  = '%s/%s/searchXML?keywords=%%s&default_operator=and&limit=50&aid=1,5' % (API_URL, API_KEY)
+MUSIC_ART      = '%s/%s/searchXML?keywords=%%s&default_operator=and&limit=50&aid=1' % (API_URL, API_KEY)
+MUSIC_THUMBS   = '%s/%s/searchXML?keywords=%%s&default_operator=and&limit=50&aid=5' % (API_URL, API_KEY)
+THUMB_URL      = '%s/%s/download/%%s/thumbnail' % (API_URL, API_KEY)
+FULL_IMAGE_URL = '%s/%s/download/%%s/fullsize' % (API_URL, API_KEY)
 
 def Start():
   HTTP.CacheTime = CACHE_1WEEK
+  HTTP.Headers['User-Agent'] = 'Plex Media Server/%s' % Platform.ServerVersion
 
 class HTBDAgent(Agent.Artist):
   name = 'Home Theater Backdrops'
-  languages = [Locale.Language.English]
+  languages = Locale.Language.All()
   primary_provider = False
   contributes_to = ['com.plexapp.agents.lastfm']
 
@@ -18,7 +21,7 @@ class HTBDAgent(Agent.Artist):
       artistName = String.StripDiacritics(media.primary_metadata.title).lower()
       previousName = ''
 
-      for artist in XML.ElementFromURL(SEARCH_ARTIST % String.URLEncode(artistName)).xpath('//image/title/text()'):
+      for artist in XML.ElementFromURL(SEARCH_ARTIST % String.URLEncode(artistName), sleep=1.0).xpath('//image/title/text()'):
         curName = String.StripDiacritics(artist).lower()
         if curName != previousName:
           score = 100 - Util.LevenshteinDistance(artistName, curName)
@@ -28,14 +31,27 @@ class HTBDAgent(Agent.Artist):
     results.Sort('score', descending=True)
 
   def update(self, metadata, media, lang):
+    # Remove old art
+    for key in metadata.art.keys():
+      if key.startswith(API_URL) == False or API_KEY not in key:
+        del metadata.art[key]
+
+    # Remove old posters
+    for key in metadata.posters.keys():
+      if key.startswith(API_URL) == False or API_KEY not in key:
+        del metadata.posters[key]
+
     for s in [MUSIC_ART, MUSIC_THUMBS]:
-      for id in XML.ElementFromURL(s % String.URLEncode(metadata.id)).xpath('//image/id/text()'):
+      i = 0
+
+      for id in XML.ElementFromURL(s % String.URLEncode(metadata.id), sleep=1.0).xpath('//image/id/text()'):
+        i += 1
         thumb = HTTP.Request(THUMB_URL % (id), cacheTime=CACHE_1MONTH)
         largeImgUrl = FULL_IMAGE_URL % id
 
         if s == MUSIC_ART:
           if largeImgUrl not in metadata.art:
-            metadata.art[largeImgUrl] = Proxy.Preview(thumb)
+            metadata.art[largeImgUrl] = Proxy.Preview(thumb, sort_order = i)
         else:
           if largeImgUrl not in metadata.posters:
-            metadata.posters[largeImgUrl] = Proxy.Preview(thumb)
+            metadata.posters[largeImgUrl] = Proxy.Preview(thumb, sort_order = i)
