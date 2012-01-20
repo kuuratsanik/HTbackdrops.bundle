@@ -18,11 +18,11 @@ class HTBDAgent(Agent.Artist):
 
   def search(self, results, media, lang):
     if media.primary_metadata is not None:
-      artistName = String.StripDiacritics(media.primary_metadata.title).lower()
+      artistName = media.primary_metadata.title.lower()
       previousName = ''
 
       for artist in XML.ElementFromURL(SEARCH_ARTIST % String.URLEncode(artistName), sleep=1.0).xpath('//image/title/text()'):
-        curName = String.StripDiacritics(artist).lower()
+        curName = artist.lower()
         if curName != previousName:
           score = 100 - Util.LevenshteinDistance(artistName, curName)
           results.Append(MetadataSearchResult(id = curName, score = score))
