@@ -10,6 +10,21 @@ def Start():
   HTTP.CacheTime = CACHE_1WEEK
   HTTP.Headers['User-Agent'] = 'Plex Media Server/%s' % Platform.ServerVersion
 
+@expose
+def ArtistSearch(artist_name):
+  artist_results = []
+  artistName = artist_name.lower().replace('.', ' ')
+  previousName = ''
+
+  for artist in XML.ElementFromURL(SEARCH_ARTIST % String.URLEncode(artistName), sleep=1.0).xpath('//image/title/text()'):
+    curName = artist.lower().replace('.', ' ')
+    if curName != previousName:
+      score = 100 - Util.LevenshteinDistance(artistName, curName)
+      artist_results.append({'id' : curName, 'score' : score})
+      previousName = curName
+
+  return sorted(artist_results, key=lambda a: a['score'], reverse=True)
+
 class HTBDAgent(Agent.Artist):
   name = 'Home Theater Backdrops'
   languages = Locale.Language.All()
@@ -18,17 +33,8 @@ class HTBDAgent(Agent.Artist):
 
   def search(self, results, media, lang):
     if media.primary_metadata is not None:
-      artistName = media.primary_metadata.title.lower().replace('.', ' ')
-      previousName = ''
-
-      for artist in XML.ElementFromURL(SEARCH_ARTIST % String.URLEncode(artistName), sleep=1.0).xpath('//image/title/text()'):
-        curName = artist.lower().replace('.', ' ')
-        if curName != previousName:
-          score = 100 - Util.LevenshteinDistance(artistName, curName)
-          results.Append(MetadataSearchResult(id = curName, score = score))
-          previousName = curName
-
-    results.Sort('score', descending=True)
+      for artist_result in ArtistSearch(media.primary_metadata.title):
+        results.Append(MetadataSearchResult(artist_result['id'], artist_result['score']))
 
   def update(self, metadata, media, lang):
     # Remove old art
