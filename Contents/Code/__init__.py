@@ -17,7 +17,7 @@ def ArtistSearch(artist_name):
   previousName = ''
 
   for artist in XML.ElementFromURL(SEARCH_ARTIST % String.URLEncode(artistName), sleep=1.0).xpath('//image/title/text()'):
-    curName = artist.lower().replace('.', ' ')
+    curName = artist.lower().replace('.', ' ').replace('’','\'')
     if curName != previousName:
       score = 100 - Util.LevenshteinDistance(artistName, curName)
       artist_results.append({'id' : curName, 'score' : score})
